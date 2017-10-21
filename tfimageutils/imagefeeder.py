@@ -15,6 +15,7 @@ class ImageFeeder:
             class_extractor: Callable[[str], str],
             *,
             split: List[int] = None,
+            filter_datatype: str = '.png',
             shuffle: bool = True,
             cycle: bool = True,
             use_one_hot: bool = True,
@@ -26,6 +27,7 @@ class ImageFeeder:
         self.class_extractor = class_extractor
         self.shuffle = shuffle
         self.cycle = cycle
+        self.filter_datatype = filter_datatype
         self.use_one_hot = use_one_hot
 
         self.stack_direction = stack_direction
@@ -40,7 +42,6 @@ class ImageFeeder:
 
         self._train_iter, self._test_iter, self._validation_iter = (None, None, None)
         self.refresh_iterators()
-
 
     def refresh_iterators(self) -> None:
         self._train_iter = self._iterate_over('train')
@@ -81,7 +82,6 @@ class ImageFeeder:
         stack_func = np.hstack if self.stack_direction == 'column' else np.vstack
         return stack_func(inputs), stack_func(labels)
 
-
     def _load_image(self, file: str) -> np.array:
         input_image = plab.imread(file)
         if self.flatten_input:
@@ -110,7 +110,8 @@ class ImageFeeder:
         return template
 
     def _build_file_queue(self) -> Filequeue:
-        files = [os.path.join(self.path_to_files, f) for f in os.listdir(self.path_to_files)]
+        files = [os.path.join(self.path_to_files, f) for f in os.listdir(self.path_to_files) if
+                 f.endswith(self.filter_datatype)]
         labels = [self.class_extractor(f) for f in files]
         all_examples = list(zip(files, labels))
         size = len(all_examples)
