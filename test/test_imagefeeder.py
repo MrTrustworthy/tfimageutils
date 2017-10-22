@@ -30,6 +30,7 @@ def test_defaultconfiguration():
         assert X.shape == (INPUT_FEATURE_AMOUNT, i)
         assert Y.shape == (OUTPUT_CLASSES_AMOUNT, i)
 
+
 def test_iterating():
     imf = ImageFeeder('testdata', lambda fn: fn[-7:-4])
 
@@ -73,8 +74,29 @@ def test_nonrandomized():
     assert not np.array_equal(b2, b3)
 
 
+def test_onehotting():
+    imf_noh = ImageFeeder('testdata', lambda fn: fn[-7:-4], shuffle=False, use_one_hot=False)
+    imf_oh = ImageFeeder('testdata', lambda fn: fn[-7:-4], shuffle=False, use_one_hot=True)
+
+    for i in range(1, 5):
+        ohx, ohy = imf_oh.get_batch('train', i)
+        nohx, nohy = imf_noh.get_batch('train', i)
+
+        reverted, prob = imf_noh.get_text_label_and_prob(ohy, apply_softmax=True)
+        assert np.array_equiv([nohy], reverted)
+
+
+def test_onehotting_row():
+    imf_noh = ImageFeeder('testdata', lambda fn: fn[-7:-4], shuffle=False, use_one_hot=False, stack_direction='row')
+    imf_oh = ImageFeeder('testdata', lambda fn: fn[-7:-4], shuffle=False, use_one_hot=True, stack_direction='row')
+
+    for i in range(1, 5):
+        ohx, ohy = imf_oh.get_batch('train', i)
+        nohx, nohy = imf_noh.get_batch('train', i)
+        reverted, prob = imf_noh.get_text_label_and_prob(ohy, apply_softmax=True)
+        assert np.array_equiv([nohy], np.array(reverted).reshape(i, 1))
+
 # def test_nonflattened():
 #     imf = ImageFeeder('testdata', lambda fn: fn[-7:-4], flatten_input=False)
 #     X, Y = imf.get_batch('train', 20)
 #     assert X.shape == INPUT_FEATURE_SHAPE + (20,)
-

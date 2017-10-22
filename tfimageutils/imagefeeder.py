@@ -1,11 +1,16 @@
+import os
 import random
-import matplotlib.pylab as plab
-import numpy as np
 from typing import Callable, List, Tuple, Dict, Iterator
 
-import os
+import matplotlib.pylab as plab
+import numpy as np
 
 Filequeue = Dict[str, List[Tuple[str, str]]]
+
+
+def softmax(inp, axis: int = 0):
+    e_x = np.exp(inp - np.max(inp))
+    return e_x / e_x.sum(axis=axis, keepdims=True)
 
 
 class ImageFeeder:
@@ -39,6 +44,7 @@ class ImageFeeder:
 
         self.file_queue: Filequeue = self._build_file_queue()
         self.classes = self._build_classlist()
+        self.num_classes = len(self.classes)
 
         self._train_iter, self._test_iter, self._validation_iter = (None, None, None)
         self.refresh_iterators()
@@ -100,9 +106,25 @@ class ImageFeeder:
             label = np.array(one_hot).reshape(new_shape)
         return label
 
-    def get_text_label(self, one_hot: List[int]) -> str:
-        idx = one_hot.index(max(one_hot))
-        return self.classes[idx]
+    def get_text_label_and_prob(
+            self,
+            one_hot: np.array,
+            apply_softmax: bool = False
+    ) -> Tuple[List[str], List[float]]:
+        """When given a softmax-ed numpy array, will find the predicted labels and their probabilities
+
+        If apply_softmax is set to true, will apply softmax to the input
+        """
+        axis = 0 if self.stack_direction == 'column' else 1
+
+        if apply_softmax:
+            one_hot = softmax(one_hot, axis=axis)
+
+        indices = np.argmax(one_hot, axis=axis)
+        classes = [self.classes[idx] for idx in indices]
+
+        probabilities = [one_hot[(0, idx) if axis == 1 else idx] for idx in indices]
+        return classes, probabilities
 
     def label_one_hot(self, label: str) -> List[int]:
         template = [0 for _ in self.classes]
